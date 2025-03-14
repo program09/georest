@@ -7,7 +7,7 @@ import { enableScreens } from 'react-native-screens';
 
 enableScreens(); // Habilitar react-native-screens
 
-const Stack = createNativeStackNavigator();
+const Stack = createNativeStackNavigator(); // Habilitar native-stack
 
 const App = () => {
   return (
