@@ -1,10 +1,11 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
+import PageTitle from '../components/PageTitle';
 
 const RestaurantScreen = () => {
   return (
     <View style={styles.container}>
-      <Text style={styles.text}>Welcome to GeoRest</Text>
+      <PageTitle pageName="GeoRest" />
       
     </View>
   );
@@ -12,16 +13,10 @@ const RestaurantScreen = () => {
 
 const styles = StyleSheet.create({
   container: {
+    width: '100%',
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
     backgroundColor: '#fff',
-  },
-  text: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
-  },
+  }
 });
 
 export default RestaurantScreen;

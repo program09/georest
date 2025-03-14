@@ -2,7 +2,6 @@ import React from 'react';
 import { View, Text, Button, StyleSheet } from 'react-native';
 import PageTitle from '../components/PageTitle';
 import PrimaryButton from '../components/ButtonPrimary'
-import OpenLayersMap from '../components/OpenLayersMap';
 
 const HomeScreen = ({ navigation }) => {
     const onButtonPress = () => {
@@ -22,14 +21,9 @@ const HomeScreen = ({ navigation }) => {
             <View style={{ width: '100%', marginLeft: 10 }}>
                 <PrimaryButton title="Descargar tipos de foto" onPress={onButtonPress} />
             </View>
-
-
             <View style={styles.mapContent}>
-            <OpenLayersMap />
+            
             </View>
-
-
-
         </View>
     );
 };
