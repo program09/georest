@@ -5,27 +5,62 @@ import { globalStyles } from "../../styles/GlobalStyles"
 import PrimaryButton from "../../components/ButtonPrimary";
 import ButtonDanger from "../../components/ButtonDanger";
 
-const FotosTab = ({ navigation }) => {
-    const [foto1, setFoto1] = useState(null);
-    const [foto2, setFoto2] = useState(null);
+const FotosTab = ({ navigation, route }) => {
+    const { photos: initialPhotos } = route.params;
+    const [photos, setPhotos] = useState(
+        initialPhotos.reduce((acc, photo) => ({
+            ...acc,
+            [photo.type.uuid]: photo.type.path
+        }), {})
+    );
 
-    const tomarFoto = useCallback((setFoto) => {
-        setFoto("https://via.placeholder.com/100"); // Simulación de foto
+    const tomarFoto = useCallback((uuid) => {
+        // Here you would implement actual camera functionality
+        // For simulation, we're using a placeholder URL
+        setPhotos(prev => ({
+            ...prev,
+            [uuid]: "https://i.blogs.es/6f44dd/google-2015-1/1366_2000.jpg"
+        }));
     }, []);
+
+    const typephotos = [
+        {
+            "uuid": "1",
+            "name": "Fachada Frontal",
+            "description": "Foto de la fachada frontal del restaurante"
+        },
+        {
+            "uuid": "2",
+            "name": "Fachada Lateral Derecha",
+            "description": "Foto de la fachada lateral derecha del restaurante"
+        },
+        {
+            "uuid": "3",
+            "name": "Fachada Lateral Izquierda",
+            "description": "Foto de la fachada lateral izquierda del restaurante"
+        }
+    ];
 
     return (
         <ScrollView style={globalStyles.container}>
             <View style={globalStyles.containerTab}>
-
-                <PhotoItem label="Etiqueta Foto 1" photo={foto1} onPress={() => tomarFoto(setFoto1)} />
-                <PhotoItem label="Etiqueta Foto 2" photo={foto2} onPress={() => tomarFoto(setFoto2)} />
+                {typephotos.map((type) => (
+                    <PhotoItem
+                        key={type.uuid}
+                        label={type.name}
+                        description={type.description}
+                        photo={photos[type.uuid]}
+                        onPress={() => tomarFoto(type.uuid)}
+                    />
+                ))}
                 <View style={globalStyles.footerButtons}>
-                    <ButtonDanger title="Cancelar" onPress={() => {
-                        setFoto1(null);
-                        setFoto2(null);
-                        navigation.goBack();
-                    }} />
-
+                    <ButtonDanger
+                        title="Cancelar"
+                        onPress={() => {
+                            setPhotos({});
+                            navigation.goBack();
+                        }}
+                    />
                     <PrimaryButton title="Guardar" />
                 </View>
             </View>

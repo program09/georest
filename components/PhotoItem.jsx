@@ -7,7 +7,7 @@ const PhotoItem = ({ label, photo, onPress }) => {
     return (
         <View style={globalStyles.itemphotocontent}>
             <Image
-                source={{ uri: photo || "https://via.placeholder.com/100" }}
+                source={{ uri: photo || "https://i.blogs.es/6f44dd/google-2015-1/1366_2000.jpg" }}
                 style={globalStyles.image}
                 resizeMode="cover"
             />

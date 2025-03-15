@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from "react";
-import { View, StyleSheet, PermissionsAndroid, Platform, Alert, Linking } from "react-native";
+import { View, StyleSheet, PermissionsAndroid, Platform, Alert, Linking, Modal, Text, TouchableOpacity } from "react-native";
 import WebView from "react-native-webview";
 import Geolocation from "@react-native-community/geolocation";
 
@@ -22,7 +22,7 @@ const requestLocationPermission = async () => {
         return false;
       } else if (granted === PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN) {
         Alert.alert(
-          "Permiso de Ubicación Necesario",
+          "Permiso de Ubicación Necesario", 
           "Los permisos de ubicación están deshabilitados. Activa los permisos en Configuración.",
           [
             { text: "Cancelar", style: "cancel" },
@@ -39,16 +39,18 @@ const requestLocationPermission = async () => {
   return true;
 };
 
-const MapOpenLayers = ({ onRestaurantSelect }) => {
+const MapOpenLayers = ({ restaurants, navigation }) => {
   const webViewRef = useRef(null);
   const [userLocation, setUserLocation] = useState(null);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [selectedLocation, setSelectedLocation] = useState(null);
+  const [selectedRestaurant, setSelectedRestaurant] = useState(null);
 
   useEffect(() => {
     const fetchLocation = async () => {
       const hasPermission = await requestLocationPermission();
       if (!hasPermission) return;
 
-      // Get initial location
       Geolocation.getCurrentPosition(
         (position) => {
           const { latitude, longitude } = position.coords;
@@ -62,7 +64,6 @@ const MapOpenLayers = ({ onRestaurantSelect }) => {
         { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
       );
 
-      // Watch for location changes
       const watchId = Geolocation.watchPosition(
         (position) => {
           const { latitude, longitude } = position.coords;
@@ -79,6 +80,15 @@ const MapOpenLayers = ({ onRestaurantSelect }) => {
     fetchLocation();
   }, []);
 
+  const handleNavigateToRestaurant = () => {
+    setModalVisible(false);
+    if (selectedRestaurant) {
+      navigation.navigate('Restaurant', { uuid: selectedRestaurant.uuid });
+    } else {
+      navigation.navigate('Restaurant', { location: selectedLocation });
+    }
+  };
+
   const sendLocationToWebView = (latitude, longitude) => {
     if (webViewRef.current) {
       webViewRef.current.injectJavaScript(`
@@ -87,24 +97,25 @@ const MapOpenLayers = ({ onRestaurantSelect }) => {
     }
   };
 
+  
+
   const handleWebViewMessage = (event) => {
     try {
       const data = JSON.parse(event.nativeEvent.data);
       console.log("📩 Mensaje recibido de WebView:", data);
 
-      if (data.type === "restaurant_selected" && onRestaurantSelect) {
-        onRestaurantSelect(data);
+      if (data.type === "location_selected") {
+        setSelectedLocation(data.coordinates);
+        setSelectedRestaurant(null);
+        setModalVisible(true);
+      } else if (data.type === "restaurant_selected") {
+        setSelectedRestaurant(data.restaurant);
+        setModalVisible(true);
       }
     } catch (error) {
       console.error("❌ Error procesando mensaje de WebView:", error);
     }
   };
-
-  const datarest = () => {
-
-  }
-
-  //Obtener los datos de una ubicacion del mapa
 
   const mapHtml = `
     <!DOCTYPE html>
@@ -123,10 +134,14 @@ const MapOpenLayers = ({ onRestaurantSelect }) => {
     <body>
       <div id="map"></div>
       <script>
-        let map, userVectorSource, userVectorLayer;
+        let map, userVectorSource, userVectorLayer, selectedLocationSource, selectedLocationLayer, restaurantsSource, restaurantsLayer;
+        let longPressTimer;
 
         function initMap() {
           userVectorSource = new ol.source.Vector();
+          selectedLocationSource = new ol.source.Vector();
+          restaurantsSource = new ol.source.Vector();
+
           userVectorLayer = new ol.layer.Vector({
             source: userVectorSource,
             style: new ol.style.Style({
@@ -138,16 +153,96 @@ const MapOpenLayers = ({ onRestaurantSelect }) => {
             })
           });
 
+          selectedLocationLayer = new ol.layer.Vector({
+            source: selectedLocationSource,
+            style: new ol.style.Style({
+              image: new ol.style.Circle({
+                radius: 12,
+                fill: new ol.style.Fill({ color: '#0000ff' }),
+                stroke: new ol.style.Stroke({ color: '#ffffff', width: 2 })
+              })
+            })
+          });
+
+          restaurantsLayer = new ol.layer.Vector({
+            source: restaurantsSource,
+            style: new ol.style.Style({
+              image: new ol.style.Circle({
+                radius: 10,
+                fill: new ol.style.Fill({ color: '#000000' }),
+                stroke: new ol.style.Stroke({ color: '#ffffff', width: 1 })
+              })
+            })
+          });
+
           map = new ol.Map({
             target: 'map',
             layers: [
               new ol.layer.Tile({ source: new ol.source.OSM() }),
-              userVectorLayer
+              restaurantsLayer,
+              userVectorLayer,
+              selectedLocationLayer
             ],
             view: new ol.View({
               center: ol.proj.fromLonLat([-77.0428, -12.0464]),
               zoom: 5
             })
+          });
+
+          // Add restaurant markers
+          const restaurants = ${JSON.stringify(restaurants)};
+          restaurants.forEach(restaurant => {
+            const coords = ol.proj.fromLonLat([restaurant.longitude, restaurant.latitude]);
+            const point = new ol.Feature({
+              geometry: new ol.geom.Point(coords),
+              restaurant: restaurant
+            });
+            restaurantsSource.addFeature(point);
+          });
+
+          let startTime;
+          
+          map.on('pointerdown', function(evt) {
+            startTime = new Date().getTime();
+          });
+
+          map.on('click', function(evt) {
+            const feature = map.forEachFeatureAtPixel(evt.pixel, function(feature) {
+              return feature;
+            });
+
+            if (feature && feature.get('restaurant')) {
+              const restaurant = feature.get('restaurant');
+              window.ReactNativeWebView.postMessage(JSON.stringify({
+                type: 'restaurant_selected',
+                restaurant: restaurant,
+                uuid: restaurant.uuid
+              }));
+            }
+          });
+
+          map.on('pointerup', function(evt) {
+            const endTime = new Date().getTime();
+            const holdTime = endTime - startTime;
+
+            if (holdTime >= 2000) {
+              const coordinate = evt.coordinate;
+              const lonLat = ol.proj.transform(coordinate, 'EPSG:3857', 'EPSG:4326');
+              
+              selectedLocationSource.clear();
+              const point = new ol.Feature({
+                geometry: new ol.geom.Point(coordinate)
+              });
+              selectedLocationSource.addFeature(point);
+
+              window.ReactNativeWebView.postMessage(JSON.stringify({
+                type: 'location_selected',
+                coordinates: {
+                  longitude: lonLat[0],
+                  latitude: lonLat[1]
+                }
+              }));
+            }
           });
         }
 
@@ -158,7 +253,6 @@ const MapOpenLayers = ({ onRestaurantSelect }) => {
           const point = new ol.Feature({
             geometry: new ol.geom.Point(coords)
           });
-          //Aqui se recibe la ubicación del us
           userVectorSource.addFeature(point);
           map.getView().setCenter(coords);
           map.getView().setZoom(16);
@@ -183,6 +277,30 @@ const MapOpenLayers = ({ onRestaurantSelect }) => {
         mixedContentMode="always"
         allowUniversalAccessFromFileURLs={true}
       />
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <View style={styles.modalView}>
+          <Text style={styles.modalText}>
+            {selectedRestaurant ? (
+              `Restaurante seleccionado: ${selectedRestaurant.name}`
+            ) : (
+              `Ubicación seleccionada:\nLatitud: ${selectedLocation?.latitude.toFixed(6)}\nLongitud: ${selectedLocation?.longitude.toFixed(6)}`
+            )}
+          </Text>
+          <TouchableOpacity
+            style={styles.button}
+            onPress={handleNavigateToRestaurant}
+          >
+            <Text style={styles.buttonText}>
+              {selectedRestaurant ? 'Ver Restaurante' : 'Ir a la ubicación'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -191,6 +309,40 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  modalView: {
+    margin: 20,
+    backgroundColor: "white",
+    borderRadius: 20,
+    padding: 35,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+    position: 'absolute',
+    bottom: 20,
+    left: 20,
+    right: 20
+  },
+  modalText: {
+    marginBottom: 15,
+    textAlign: "center"
+  },
+  button: {
+    backgroundColor: "#2196F3",
+    borderRadius: 20,
+    padding: 10,
+    elevation: 2
+  },
+  buttonText: {
+    color: "white",
+    fontWeight: "bold",
+    textAlign: "center"
+  }
 });
 
 export default MapOpenLayers;
