@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, Button, StyleSheet } from 'react-native';
+import { View, Text} from 'react-native';
 import PageTitle from '../components/PageTitle';
 import PrimaryButton from '../components/ButtonPrimary'
 import { globalStyles } from '../styles/GlobalStyles';
@@ -7,12 +7,11 @@ import MapOpenLayers from '../components/MapOpenLayers';
 
 
 const HomeScreen = ({ navigation }) => {
-    const onButtonPress = () => {
-        navigation.navigate('Restaurant')
-    };
+    
+    const onButtonPress = () => {navigation.navigate('Restaurant')};
     const handleRestaurantSelect = (restaurant) => {
         console.log("Restaurante seleccionado:", restaurant);
-      };
+    };
     return (
         <View style={globalStyles.container}>
             <PageTitle pageName="Home" />
@@ -33,6 +32,5 @@ const HomeScreen = ({ navigation }) => {
         </View>
     );
 };
-
 
 export default HomeScreen;

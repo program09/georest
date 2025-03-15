@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mapa con OpenLayers</title>
+
+    <!-- OpenLayers desde CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/openlayers/4.6.5/ol.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/openlayers/4.6.5/ol.js"></script>
+
+    <style>
+        #map {
+            width: 100%;
+            height: 100vh;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1 id="datosx"></h1>
+    <div id="map"></div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const datatitle = document.getElementById('datosx');
+
+            if (!datatitle) {
+                console.error("❌ Elemento con id 'datosx' no encontrado.");
+                return;
+            }
+
+            datatitle.textContent = "success1";
+
+            if (typeof ol === "undefined") {
+                console.error("❌ OpenLayers no está cargado.");
+                datatitle.textContent = "Error: OpenLayers no encontradod";
+                return;
+            }
+
+            const map = new ol.Map({
+                target: 'map',
+                layers: [
+                    new ol.layer.Tile({
+                        source: new ol.source.OSM()
+                    })
+                ],
+                view: new ol.View({
+                    center: ol.proj.fromLonLat([-77.0428, -12.0464]),
+                    zoom: 15
+                })
+            });
+
+            const userVectorSource = new ol.source.Vector();
+            const userVectorLayer = new ol.layer.Vector({ source: userVectorSource });
+            map.addLayer(userVectorLayer);
+
+            const restaurantVectorSource = new ol.source.Vector();
+            const restaurantVectorLayer = new ol.layer.Vector({ source: restaurantVectorSource });
+            map.addLayer(restaurantVectorLayer);
+
+            if ("geolocation" in navigator) {
+                navigator.geolocation.getCurrentPosition(
+                    function (position) {
+                        const userCoords = ol.proj.fromLonLat([position.coords.longitude, position.coords.latitude]);
+
+                        const userPoint = new ol.Feature({
+                            geometry: new ol.geom.Point(userCoords),
+                        });
+
+                        userPoint.setStyle(new ol.style.Style({
+                            image: new ol.style.Circle({
+                                radius: 10,
+                                fill: new ol.style.Fill({ color: 'red' }),
+                                stroke: new ol.style.Stroke({ color: 'white', width: 4 })
+                            })
+                        }));
+
+                        userVectorSource.addFeature(userPoint);
+                        map.getView().setCenter(userCoords);
+                        map.getView().setZoom(16);
+                    },
+                    function (error) {
+                        console.error("Error obteniendo ubicación:", error);
+                    },
+                    { enableHighAccuracy: true }
+                );
+            } else {
+                alert("Geolocalización no soportada en este navegador.");
+            }
+
+            function agregarRestaurantes(data) {
+                try {
+                    console.log("📩 Datos recibidos en WebView:", data);
+
+                    let restaurantes = JSON.parse(data);
+                    restaurantVectorSource.clear();
+
+                    if (!Array.isArray(restaurantes) || restaurantes.length === 0) {
+                        console.warn("⚠️ No hay restaurantes para mostrar.");
+                        datatitle.textContent = "No hay restaurantes";
+                        return;
+                    }
+
+                    restaurantes.forEach((restaurante, index) => {
+                        let lon = parseFloat(restaurante.longitude);
+                        let lat = parseFloat(restaurante.latitude);
+
+                        if (isNaN(lon) || isNaN(lat)) {
+                            console.warn("⚠️ Coordenadas inválidas:", restaurante);
+                            return;
+                        }
+
+                        let coords = ol.proj.fromLonLat([lon, lat]);
+
+                        let marker = new ol.Feature({
+                            geometry: new ol.geom.Point(coords),
+                            restaurantId: restaurante.id || index
+                        });
+
+                        marker.setStyle(new ol.style.Style({
+                            image: new ol.style.Circle({
+                                radius: 12,
+                                fill: new ol.style.Fill({ color: 'blue' }),
+                                stroke: new ol.style.Stroke({ color: 'white', width: 2 })
+                            })
+                        }));
+
+                        restaurantVectorSource.addFeature(marker);
+                    });
+
+                    restaurantVectorSource.changed();
+                    map.render();
+
+                    datatitle.textContent = "Restaurantes añadidos: " + restaurantes.length;
+
+                } catch (error) {
+                    console.error("❌ Error procesando datos de restaurantes:", error);
+                    datatitle.textContent = "Error al procesar datos";
+                }
+            }
+
+            let longPressTimeout;
+            let isInteracting = false; // Variable para detectar si se está haciendo zoom o desplazando
+
+            // Detectar si el usuario está moviendo el mapa o haciendo zoom
+            map.on('movestart', function () {
+                isInteracting = true;
+            });
+
+            map.on('moveend', function () {
+                setTimeout(() => {
+                    isInteracting = false;
+                }, 600); // Pequeño retraso para evitar falsos positivos
+            });
+
+            map.on('pointerdown', function (event) {
+                if (isInteracting) {
+                    console.log("🚫 Acción bloqueada: el usuario está moviendo el mapa.");
+                    return;
+                }
+
+                let found = false;
+                let coords = ol.proj.toLonLat(event.coordinate); // Obtener coordenadas del clic
+
+                map.forEachFeatureAtPixel(event.pixel, function (feature) {
+                    let restaurantId = feature.get('restaurantId');
+                    let geometry = feature.getGeometry(); // Obtener la geometría del restaurante
+
+                    if (restaurantId !== undefined && restaurantId !== null && geometry) {
+                        let restaurantCoords = ol.proj.toLonLat(geometry.getCoordinates()); // Convertir a lat/lon
+
+                        console.log("🍽 Restaurante seleccionado - ID:", restaurantId, "📍 Coordenadas:", restaurantCoords);
+                        datatitle.textContent = `Restaurante seleccionado: ${restaurantId} (Lat: ${restaurantCoords[1]}, Lon: ${restaurantCoords[0]})`;
+                        found = true;
+
+                        if (window.ReactNativeWebView) {
+                            window.ReactNativeWebView.postMessage(JSON.stringify({
+                                type: "restaurant_selected",
+                                restaurantId: restaurantId,
+                                latitude: restaurantCoords[1], // Latitud del restaurante
+                                longitude: restaurantCoords[0]  // Longitud del restaurante
+                            }));
+                        }
+                    }
+                });
+
+                if (!found) {
+                    console.warn("⚠️ No se seleccionó ningún restaurante.");
+
+                    longPressTimeout = setTimeout(() => {
+                        if (!isInteracting) { // Verificar si aún no se está moviendo el mapa
+                            console.log("📌 Coordenadas para nuevo restaurante:", coords);
+                            datatitle.textContent = `Nuevo Restaurante: Lat ${coords[1]}, Lon ${coords[0]}`;
+
+                            if (window.ReactNativeWebView) {
+                                window.ReactNativeWebView.postMessage(JSON.stringify({
+                                    type: "show_add_restaurant_modal",
+                                    restaurantId: 0,
+                                    latitude: coords[1], // Latitud del punto seleccionado
+                                    longitude: coords[0]  // Longitud del punto seleccionado
+                                }));
+                            }
+                        }
+                    }, 700); // Se activa si se mantiene presionado 2 segundos
+                }
+            });
+
+            map.on('pointerup', function () {
+                clearTimeout(longPressTimeout); // Cancela la creación si se suelta antes de 2 segundos
+            });
+
+
+
+            window.addEventListener("message", function (event) {
+                agregarRestaurantes(event.data);
+            });
+
+            function sendLocationToReactNative(latitude, longitude) {
+                if (window.ReactNativeWebView) {
+                    window.ReactNativeWebView.postMessage(JSON.stringify({ latitude, longitude }));
+                }
+            }
+
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    sendLocationToReactNative(position.coords.latitude, position.coords.longitude);
+                },
+                (error) => {
+                    console.error("Error obteniendo ubicación:", error);
+                }
+            );
+        });
+    </script>
+
+
+
+</body>
+
+</html>
