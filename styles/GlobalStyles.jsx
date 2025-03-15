@@ -116,6 +116,7 @@ export const globalStyles = StyleSheet.create({
         width: '100% -10',
         backgroundColor: '#000',
         margin: 10,
-        borderRadius: 15,
+        borderRadius: 25,
+        overflow: 'hidden',
     }
 });

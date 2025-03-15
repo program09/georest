@@ -3,11 +3,16 @@ import { View, Text, Button, StyleSheet } from 'react-native';
 import PageTitle from '../components/PageTitle';
 import PrimaryButton from '../components/ButtonPrimary'
 import { globalStyles } from '../styles/GlobalStyles';
+import MapOpenLayers from '../components/MapOpenLayers';
+
 
 const HomeScreen = ({ navigation }) => {
     const onButtonPress = () => {
         navigation.navigate('Restaurant')
     };
+    const handleRestaurantSelect = (restaurant) => {
+        console.log("Restaurante seleccionado:", restaurant);
+      };
     return (
         <View style={globalStyles.container}>
             <PageTitle pageName="Home" />
@@ -23,7 +28,7 @@ const HomeScreen = ({ navigation }) => {
                 <PrimaryButton title="Descargar tipos de foto" onPress={onButtonPress} />
             </View>
             <View style={globalStyles.mapContent}>
-            
+            <MapOpenLayers onRestaurantSelect={handleRestaurantSelect} />
             </View>
         </View>
     );
