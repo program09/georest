@@ -5,21 +5,15 @@ import { globalStyles } from "../../styles/GlobalStyles"
 import PrimaryButton from "../../components/ButtonPrimary";
 import ButtonDanger from "../../components/ButtonDanger";
 
-const FotosTab = ({ navigation, route }) => {
-    const { photos: initialPhotos } = route.params;
-    const [photos, setPhotos] = useState(
-        initialPhotos.reduce((acc, photo) => ({
-            ...acc,
-            [photo.type.uuid]: photo.type.path
-        }), {})
-    );
+const FotosTab = ({ navigation }) => {
+    const [photos, setPhotos] = useState({});
 
     const tomarFoto = useCallback((uuid) => {
         // Here you would implement actual camera functionality
         // For simulation, we're using a placeholder URL
         setPhotos(prev => ({
             ...prev,
-            [uuid]: "https://i.blogs.es/6f44dd/google-2015-1/1366_2000.jpg"
+            [uuid]: "https://i.blogs.es/ce51e2/significado-iconos-logos-google-apps/1366_2000.jpeg"
         }));
     }, []);
 
