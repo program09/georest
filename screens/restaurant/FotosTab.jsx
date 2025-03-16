@@ -9,8 +9,6 @@ const FotosTab = ({ navigation }) => {
     const [photos, setPhotos] = useState({});
 
     const tomarFoto = useCallback((uuid) => {
-        // Here you would implement actual camera functionality
-        // For simulation, we're using a placeholder URL
         setPhotos(prev => ({
             ...prev,
             [uuid]: "https://i.blogs.es/ce51e2/significado-iconos-logos-google-apps/1366_2000.jpeg"

@@ -2,14 +2,12 @@ import React, { useRef, useEffect, useState } from "react";
 import { View, StyleSheet, PermissionsAndroid, Platform, Alert, Linking, Modal, Text, TouchableOpacity } from "react-native";
 import WebView from "react-native-webview";
 import Geolocation from "@react-native-community/geolocation";
-
 const requestLocationPermission = async () => {
   if (Platform.OS === "android") {
     try {
       const granted = await PermissionsAndroid.request(
         PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION
       );
-
       if (granted === PermissionsAndroid.RESULTS.GRANTED) {
         console.log("✅ Permiso de ubicación concedido");
         return true;
@@ -22,7 +20,7 @@ const requestLocationPermission = async () => {
         return false;
       } else if (granted === PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN) {
         Alert.alert(
-          "Permiso de Ubicación Necesario", 
+          "Permiso de Ubicación Necesario",
           "Los permisos de ubicación están deshabilitados. Activa los permisos en Configuración.",
           [
             { text: "Cancelar", style: "cancel" },
@@ -38,19 +36,16 @@ const requestLocationPermission = async () => {
   }
   return true;
 };
-
 const MapOpenLayers = ({ restaurants, navigation }) => {
   const webViewRef = useRef(null);
   const [userLocation, setUserLocation] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState(null);
   const [selectedRestaurant, setSelectedRestaurant] = useState(null);
-
   useEffect(() => {
     const fetchLocation = async () => {
       const hasPermission = await requestLocationPermission();
       if (!hasPermission) return;
-
       Geolocation.getCurrentPosition(
         (position) => {
           const { latitude, longitude } = position.coords;
@@ -63,7 +58,6 @@ const MapOpenLayers = ({ restaurants, navigation }) => {
         },
         { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
       );
-
       const watchId = Geolocation.watchPosition(
         (position) => {
           const { latitude, longitude } = position.coords;
@@ -73,13 +67,10 @@ const MapOpenLayers = ({ restaurants, navigation }) => {
         (error) => console.error("❌ Error siguiendo ubicación:", error),
         { enableHighAccuracy: true, distanceFilter: 10 }
       );
-
       return () => Geolocation.clearWatch(watchId);
     };
-
     fetchLocation();
   }, []);
-
   const handleNavigateToRestaurant = () => {
     setModalVisible(false);
     if (selectedRestaurant) {
@@ -88,7 +79,6 @@ const MapOpenLayers = ({ restaurants, navigation }) => {
       navigation.navigate('Restaurant', { location: selectedLocation });
     }
   };
-
   const sendLocationToWebView = (latitude, longitude) => {
     if (webViewRef.current) {
       webViewRef.current.injectJavaScript(`
@@ -96,14 +86,10 @@ const MapOpenLayers = ({ restaurants, navigation }) => {
       `);
     }
   };
-
-  
-
   const handleWebViewMessage = (event) => {
     try {
       const data = JSON.parse(event.nativeEvent.data);
       console.log("📩 Mensaje recibido de WebView:", data);
-
       if (data.type === "location_selected") {
         setSelectedLocation(data.coordinates);
         setSelectedRestaurant(null);
@@ -116,7 +102,6 @@ const MapOpenLayers = ({ restaurants, navigation }) => {
       console.error("❌ Error procesando mensaje de WebView:", error);
     }
   };
-
   const mapHtml = `
     <!DOCTYPE html>
     <html lang="es">
@@ -147,7 +132,7 @@ const MapOpenLayers = ({ restaurants, navigation }) => {
             style: new ol.style.Style({
               image: new ol.style.Circle({
                 radius: 10,
-                fill: new ol.style.Fill({ color: '#ff0000' }),
+                fill: new ol.style.Fill({ color: 'blue' }),
                 stroke: new ol.style.Stroke({ color: '#ffffff', width: 2 })
               })
             })
@@ -166,13 +151,17 @@ const MapOpenLayers = ({ restaurants, navigation }) => {
 
           restaurantsLayer = new ol.layer.Vector({
             source: restaurantsSource,
-            style: new ol.style.Style({
-              image: new ol.style.Circle({
-                radius: 10,
-                fill: new ol.style.Fill({ color: '#000000' }),
-                stroke: new ol.style.Stroke({ color: '#ffffff', width: 1 })
-              })
-            })
+            style: function(feature) {
+              const restaurant = feature.get('restaurant');
+              const color = restaurant.send_api ? '#ff0000' : '#000000'; // Rojo si send_api es true, negro si es false
+              return new ol.style.Style({
+                image: new ol.style.Circle({
+                  radius: 10,
+                  fill: new ol.style.Fill({ color: color }),
+                  stroke: new ol.style.Stroke({ color: '#ffffff', width: 1 })
+                })
+              });
+            }
           });
 
           map = new ol.Map({
