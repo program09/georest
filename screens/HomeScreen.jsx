@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, Alert } from 'react-native';
 import PageTitle from '../components/PageTitle';
 import PrimaryButton from '../components/ButtonPrimary'
 import { globalStyles } from '../styles/GlobalStyles';
 import MapOpenLayers from '../components/MapOpenLayers';
+import { useFocusEffect } from '@react-navigation/native';
 
 import { db } from '../database/createdatabase';
 
@@ -18,12 +19,12 @@ const HomeScreen = ({ navigation }) => {
         try {
             const response = await fetch(url, {
                 method: 'GET',
-                headers: {'x-api-key': apiKey,}
+                headers: { 'x-api-key': apiKey, }
             });
 
-            if (!response.ok) {throw new Error(`HTTP error! status: ${response.status}`);}
+            if (!response.ok) { throw new Error(`HTTP error! status: ${response.status}`); }
 
-            const data = await response.json(); 
+            const data = await response.json();
             return data; // Retornar los datos obtenidos de la API
         } catch (error) {
             console.error('Error fetching types from API:', error);
@@ -38,7 +39,7 @@ const HomeScreen = ({ navigation }) => {
                 tx.executeSql(
                     `INSERT OR IGNORE INTO Types (uuid, name, description) VALUES (?, ?, ?)`,
                     [type.uuid, type.name, type.description],
-                    () => {},
+                    () => { },
                     error => console.error('Error al guardar tipo:', error)
                 );
             });
@@ -52,71 +53,58 @@ const HomeScreen = ({ navigation }) => {
             saveTypesToLocalDB(types); // Guardar los datos en local
             Alert.alert('Éxito', 'Los tipos de fotos se han guardado correctamente en la base de datos local.');
         }
-        catch (error) {Alert.alert('Error', 'No se pudieron obtener o guardar los tipos.');}
+        catch (error) { Alert.alert('Error', 'No se pudieron obtener o guardar los tipos.'); }
     };
 
     const handleRestaurantSelect = (restaurant) => {
         console.log("Restaurante seleccionado:", restaurant);
         setSelectedRestaurantId(restaurant.uuid);
     };
-
-    const [restaurantList, setRestaurantList] = useState([]);
     const [totalRestaurants, setTotalRestaurants] = useState(0);
     const [pendingRestaurants, setPendingRestaurants] = useState(0);
+    const [restaurantList, setRestaurantList] = useState([]);
 
-    // Load restaurants from local database when component mounts
-    React.useEffect(() => {
-        db.transaction(tx => {
-            // Get all restaurants
+    const fetchData = () => {
+        db.transaction((tx) => {
             tx.executeSql(
-                'SELECT * FROM Restaurants',
+                `SELECT 
+                    COUNT(*) as total, 
+                    SUM(CASE WHEN send_api = 0 THEN 1 ELSE 0 END) as pending 
+                 FROM Restaurants;`,
                 [],
-                (_, { rows: { _array } }) => {
-                    setRestaurantList(_array);
-                    setTotalRestaurants(_array.length);
-                    // Count restaurants with send_api = false
-                    const pending = _array.filter(restaurant => restaurant.send_api === false).length;
+                (_, results) => {
+                    let total = results.rows.item(0).total; // Total de restaurantes
+                    let pending = results.rows.item(0).pending || 0; // Restaurantes pendientes (evita null)
+                    setTotalRestaurants(total);
                     setPendingRestaurants(pending);
+                    console.log("Total de restaurantes:", total);
+                    console.log("Restaurantes pendientes:", pending);
                 },
-                (_, error) => {
-                    console.error('Error fetching restaurants:', error);
-                }
+                (_, error) => console.error("Error al obtener datos agregados", error)
+            );
+    
+            tx.executeSql(
+                "SELECT * FROM Restaurants;",
+                [],
+                (_, results) => {
+                    let restaurants = [];
+                    let rows = results.rows;
+                    for (let i = 0; i < rows.length; i++) {
+                        restaurants.push(rows.item(i));
+                    }
+                    setRestaurantList(restaurants);
+                    console.log("Restaurantes obtenidos:", restaurants);
+                },
+                (_, error) => console.error("Error al obtener la lista de restaurantes", error)
             );
         });
-    }, []);
+    };
 
-    /*const restaurantList = [
-        {
-            "id":1 ,
-            "name": "Tanta 6",
-            "ruc": "1903456789126",
-            "latitude": -7.085623756585501, // Removed string quotes for numeric values
-            "longitude": -75.885855997828300,
-            "comment": "Comentario",
-            "uuid": "258163a7-7e8a-4435-970e-7adc8cb2c30a",
-            "send_api": false,
-        },
-        {
-            "id": 3,
-            "name": "La Rosa Náutica",
-            "ruc": "2003456789127",
-            "latitude": -8.084523756585502,
-            "longitude": -76.884855997828301,
-            "comment": "Restaurant with sea view",
-            "uuid": "358163a7-7e8a-4435-970e-7adc8cb2c30b",
-            "send_api": true,
-        },
-        {
-            "id": 3,
-            "name": "Central",
-            "ruc": "2103456789128",
-            "latitude": -7.083423756585503,
-            "longitude": -76.883855997828302,
-            "comment": "Fine dining restaurant",
-            "uuid": "458163a7-7e8a-4435-970e-7adc8cb2c30c",
-            "send_api": true,
-        }
-    ];*/
+    useFocusEffect(
+        useCallback(() => {
+            fetchData();
+        }, [])
+    );
 
     return (
         <View style={globalStyles.container}>

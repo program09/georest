@@ -174,20 +174,22 @@ const MapOpenLayers = ({ restaurants, navigation }) => {
             ],
             view: new ol.View({
               center: ol.proj.fromLonLat([-77.0428, -12.0464]),
-              zoom: 5
+              zoom: 15
             })
           });
 
-          // Add restaurant markers
+          // Add restaurant markers (solo si la lista no está vacía)
           const restaurants = ${JSON.stringify(restaurants)};
-          restaurants.forEach(restaurant => {
-            const coords = ol.proj.fromLonLat([restaurant.longitude, restaurant.latitude]);
-            const point = new ol.Feature({
-              geometry: new ol.geom.Point(coords),
-              restaurant: restaurant
+          if (restaurants && restaurants.length > 0) {
+            restaurants.forEach(restaurant => {
+              const coords = ol.proj.fromLonLat([restaurant.longitude, restaurant.latitude]);
+              const point = new ol.Feature({
+                geometry: new ol.geom.Point(coords),
+                restaurant: restaurant
+              });
+              restaurantsSource.addFeature(point);
             });
-            restaurantsSource.addFeature(point);
-          });
+          }
 
           let startTime;
           

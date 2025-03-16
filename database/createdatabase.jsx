@@ -3,7 +3,11 @@ import SQLite from 'react-native-sqlite-storage';
 
 // Abrir o crear la base de datos
 const db = SQLite.openDatabase(
-    { name: 'restaurants.db', location: 'default' },
+    { 
+        name: 'georest.db', 
+        location: 'default',
+        createFromLocation: 1  // This ensures the database persists between app launches
+    },
     () => {
         console.log('Database opened successfully');
         checkAndCreateTables(); // Verificar y crear tablas si no existen
@@ -58,8 +62,8 @@ const checkAndCreateTables = () => {
               uuid TEXT,
               ruc TEXT NOT NULL,
               name TEXT NOT NULL,
-              latitude REAL NOT NULL,
-              longitude REAL NOT NULL,
+              latitude TEXT NOT NULL,
+              longitude TEXT NOT NULL,
               comment TEXT,
               send_api BOOLEAN NOT NULL DEFAULT false
             )`,
