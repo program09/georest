@@ -16,7 +16,7 @@ La aplicación mustra restaurantes en un mapa. al rededor de la ubicación del u
 
 - Se sincronixan los datos a la api en segundo plano
 
-- Mantener precionado una ubicación en el mapa para agregar nuevo restaurante
+- Mantener precionado una ubicación (por 1 segundo) en el mapa para agregar nuevo restaurante
 - Precionar un restaurante para ver su información
 
 
