@@ -51,7 +51,7 @@ La aplicación mustra restaurantes en un mapa. al rededor de la ubicación del u
 
 ## Installation
 
-1. clonar el repositorio
+1. clonar el repositorio  https://github.com/program09/georest.git
 2. ejecutar npm install -> para instalar las dependencias
 3. ejecutar npm run android o npm run ios -> para ejecutar la aplicación
 
