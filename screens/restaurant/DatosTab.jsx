@@ -6,6 +6,7 @@ import { db } from "../../database/createdatabase";
 import ButtonDanger from "../../components/ButtonDanger";
 import PrimaryButton from "../../components/ButtonPrimary";
 
+
 const DatosTab = ({ route, navigation }) => {
     const [nombre, setNombre] = useState("");
     const [ruc, setRuc] = useState("");
@@ -20,12 +21,11 @@ const DatosTab = ({ route, navigation }) => {
             setLongitud(longitude ? longitude.toString() : "");
             if (route.params.uuid) {
                 const uuid = route.params.uuid;
-                // If UUID is numeric (short format)
-                if (!isNaN(uuid) && uuid.length < 10) {
-                    // Fetch restaurant data from local database
+                
+                if (!isNaN(uuid) && uuid.length < 10 || !navigator.onLine) {
                     db.transaction(tx => {
                         tx.executeSql(
-                            'SELECT * FROM Restaurants WHERE id = ?',
+                            'SELECT * FROM Restaurants WHERE uuid = ?',
                             [uuid],
                             (_, { rows }) => {
                                 if (rows.length > 0) {
@@ -43,8 +43,9 @@ const DatosTab = ({ route, navigation }) => {
                         );
                     });
 
-                } else {
-                    // Fetch restaurant data from API
+                }
+                else {
+
                     fetch(`https://c7e42vwpel.execute-api.us-east-1.amazonaws.com/yordialcantara/restaurants/${uuid}`, {
                         headers: {
                             'x-api-key': 'yvCOAEXOaj2wge5Uh1czv5WaI9rVeEdW1K6w3bh9'
@@ -67,8 +68,6 @@ const DatosTab = ({ route, navigation }) => {
             }
         }
     }, [route.params]);
-
-
 
     const handleSave = () => {
         // Validar campos obligatorios
@@ -95,16 +94,21 @@ const DatosTab = ({ route, navigation }) => {
                             (_, updateResult) => {
                                 if (updateResult.rowsAffected > 0) {
                                     console.log("UUID updated successfully");
-                                    Alert.alert("Success", "Restaurant saved successfully.");
+                                    Alert.alert("Success", "Restaurant saved successfully");
+                                    navigation.setParams({ uuid: insertId.toString() });
+                                    navigation.goBack()
                                 } else {
                                     console.error("Failed to update UUID");
                                     Alert.alert("Error", "Failed to update restaurant UUID.");
                                 }
+
                             },
                             (_, error) => {
                                 console.error("Error updating UUID:", error);
                                 Alert.alert("Error", "Failed to update restaurant UUID.");
                             }
+                            
+                        
                         );
                     } else {
                         console.error("No se pudo guardar el restaurante.");
@@ -118,6 +122,7 @@ const DatosTab = ({ route, navigation }) => {
             );
         });
     };
+
     return (
         <ScrollView style={globalStyles.container}>
             <View style={globalStyles.containerTab}>

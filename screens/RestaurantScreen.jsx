@@ -53,7 +53,7 @@ const RestaurantScreen = ({ route }) => {
         <Tab.Screen
           name="Fotos"
           component={FotosTab}
-          initialParams={{ uuid}}
+          initialParams={{ uuid }}
         />
       </Tab.Navigator>
     </View>

@@ -1,6 +1,7 @@
 import { Alert } from 'react-native';
 import SQLite from 'react-native-sqlite-storage';
 
+
 // Abrir o crear la base de datos
 const db = SQLite.openDatabase(
     { 
@@ -98,13 +99,13 @@ const checkAndCreateTables = () => {
                     // Crear tabla Photos si no existe
                     tx.executeSql(
                         `CREATE TABLE IF NOT EXISTS Photos (
-              uuid_restaurant TEXT,
-              uuid_type TEXT,
-              path_photo TEXT NOT NULL,
-              FOREIGN KEY (uuid_restaurant) REFERENCES Restaurants(uuid),
-              FOREIGN KEY (uuid_type) REFERENCES Types(uuid),
-              PRIMARY KEY (uuid_restaurant, uuid_type)
-            )`,
+                        uuid_restaurant TEXT,
+                        uuid_type TEXT,
+                        path_photo TEXT NOT NULL,
+                        FOREIGN KEY (uuid_restaurant) REFERENCES Restaurants(uuid),
+                        FOREIGN KEY (uuid_type) REFERENCES Types(uuid),
+                        PRIMARY KEY (uuid_restaurant, uuid_type)
+                        )`,
                         [],
                         () => console.log('Photos table created or already exists'),
                         error => console.error('Failed to create Photos table', error)
