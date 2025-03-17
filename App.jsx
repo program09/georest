@@ -11,10 +11,9 @@ enableScreens(); // Habilitar react-native-screens
 const Stack = createNativeStackNavigator(); // Habilitar native-stack
 
 const App = () => {
-
+  //Definición de las pantallas para navegar
   return (
     <NavigationContainer>
-
       <Stack.Navigator initialRouteName="Home">
         <Stack.Screen
           name="Home"

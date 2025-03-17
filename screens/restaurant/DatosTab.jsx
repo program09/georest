@@ -1,27 +1,33 @@
 import React, { useState, useEffect } from "react";
 import { View, Text, TextInput, ScrollView, Alert } from "react-native";
 import { globalStyles } from "../../styles/GlobalStyles";
-import PageTitle from "../../components/PageTitle";
 import { db } from "../../database/createdatabase";
 import ButtonDanger from "../../components/ButtonDanger";
 import PrimaryButton from "../../components/ButtonPrimary";
 
-
 const DatosTab = ({ route, navigation }) => {
-    const [nombre, setNombre] = useState("");
-    const [ruc, setRuc] = useState("");
-    const [latitud, setLatitud] = useState("");
-    const [longitud, setLongitud] = useState("");
-    const [comentario, setComentario] = useState("");
+    const [nombre, setNombre] = useState(""); // Nombre del restaurante
+    const [ruc, setRuc] = useState("");  // RUC del restaurante
+    const [latitud, setLatitud] = useState(""); // Latitud del restaurante
+    const [longitud, setLongitud] = useState(""); // Longitud del restaurante
+    const [comentario, setComentario] = useState(""); // Comentario del restaurante opcional
+
+    const BASE_URL =  "https://c7e42vwpel.execute-api.us-east-1.amazonaws.com/yordialcantara"
+    const APY_KEY = "yvCOAEXOaj2wge5Uh1czv5WaI9rVeEdW1K6w3bh9"
 
     useEffect(() => {
+        // Sis e envía parametros
         if (route.params) {
-            const { latitude, longitude } = route.params;
-            setLatitud(latitude ? latitude.toString() : "");
-            setLongitud(longitude ? longitude.toString() : "");
+            const { latitude, longitude } = route.params; // Obtener la ubicación del restaurante si se envía como parámetro
+            setLatitud(latitude ? latitude.toString() : ""); // Convertir a string latitud
+            setLongitud(longitude ? longitude.toString() : ""); // Convertir a string longitud
+
+            // Si se envía como parámetro el uuid del restaurante
             if (route.params.uuid) {
                 const uuid = route.params.uuid;
                 
+                // Si el uuid es menor a 10 caracteres, es un id local
+                // Cargar información del restaurante desde local si no hay conexión a internet
                 if (!isNaN(uuid) && uuid.length < 10 || !navigator.onLine) {
                     db.transaction(tx => {
                         tx.executeSql(
@@ -42,13 +48,11 @@ const DatosTab = ({ route, navigation }) => {
                             }
                         );
                     });
-
                 }
                 else {
-
-                    fetch(`https://c7e42vwpel.execute-api.us-east-1.amazonaws.com/yordialcantara/restaurants/${uuid}`, {
+                    fetch(`${BASE_URL}/restaurants/${uuid}`, {
                         headers: {
-                            'x-api-key': 'yvCOAEXOaj2wge5Uh1czv5WaI9rVeEdW1K6w3bh9'
+                            'x-api-key': APY_KEY
                         }
                     })
                         .then(response => response.json())
@@ -76,7 +80,7 @@ const DatosTab = ({ route, navigation }) => {
             return;
         }
 
-        // Insertar en la base de datos
+        // Insertar en la base de datos local
         db.transaction(tx => {
             tx.executeSql(
                 `INSERT INTO Restaurants (name, ruc, latitude, longitude, comment, uuid)
@@ -84,40 +88,30 @@ const DatosTab = ({ route, navigation }) => {
                 [nombre, ruc, latitud, longitud, comentario, null],
                 (_, result) => {
                     if (result.rowsAffected > 0) {
-                        const insertId = result.insertId;
-                        console.log("Restaurante guardado correctamente. ID:", insertId);
+                        const insertId = result.insertId; // Id generado automáticamente
 
-                        // Update the UUID with the insertId
+                        // Actualizar el campo uuid con el id generado en la base de datos local
                         tx.executeSql(
                             'UPDATE Restaurants SET uuid = ? WHERE id = ?',
                             [insertId.toString(), insertId],
                             (_, updateResult) => {
                                 if (updateResult.rowsAffected > 0) {
-                                    console.log("UUID updated successfully");
-                                    Alert.alert("Success", "Restaurant saved successfully");
-                                    navigation.setParams({ uuid: insertId.toString() });
-                                    navigation.goBack()
+                                    Alert.alert("Success", "Restaurante creado exitosamente.");
+                                    navigation.goBack() // Regresar a home
                                 } else {
-                                    console.error("Failed to update UUID");
-                                    Alert.alert("Error", "Failed to update restaurant UUID.");
+                                    Alert.alert("Error", "No se pudo actualizar el uuid.");
                                 }
-
                             },
                             (_, error) => {
-                                console.error("Error updating UUID:", error);
-                                Alert.alert("Error", "Failed to update restaurant UUID.");
-                            }
-                            
-                        
+                                Alert.alert("Error", "Ocurrió un error.", error);
+                            }   
                         );
                     } else {
-                        console.error("No se pudo guardar el restaurante.");
                         Alert.alert("Error", "No se pudo guardar el restaurante.");
                     }
                 },
                 (_, error) => {
-                    console.error("Error al guardar el restaurante:", error);
-                    Alert.alert("Error", "No se pudo guardar el restaurante.");
+                    Alert.alert("Error", "No se pudo guardar el restaurante.", error);
                 }
             );
         });

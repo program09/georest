@@ -237,11 +237,9 @@ const MapOpenLayers = ({ restaurants, navigation }) => {
           map.on('pointerup', function(evt) {
             const endTime = new Date().getTime();
             const holdTime = endTime - startTime;
-
-            if (holdTime >= 2000) {
+            if (holdTime >= 700) {
               const coordinate = evt.coordinate;
               const lonLat = ol.proj.transform(coordinate, 'EPSG:3857', 'EPSG:4326');
-              
               selectedLocationSource.clear();
               const point = new ol.Feature({
                 geometry: new ol.geom.Point(coordinate)

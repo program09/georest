@@ -28,6 +28,40 @@ const FotosTab = ({ navigation, route }) => {
         return true;  // iOS no requiere permiso manual
     };
 
+    const [ruc, setRuc] = useState('');
+
+    const getRuc = async () => {
+        const restaurantUuid = route.params?.uuid;
+
+        if (!restaurantUuid) {
+            console.error("Restaurant UUID not found");
+            return;
+        }
+
+        db.transaction(tx => {
+            tx.executeSql(
+                'SELECT ruc FROM Restaurants WHERE uuid = ?',
+                [restaurantUuid],
+                (_, { rows }) => {
+                    if (rows.length > 0) {
+                        const restaurant = rows.item(0);
+                        setRuc(restaurant.ruc);
+                    } else {
+                        console.error("Restaurant not found");
+                        Alert.alert("Error", "Restaurant not found.");
+                    }
+                },
+                (_, error) => {
+                    console.error("Error fetching restaurant RUC:", error);
+                }
+            );
+        });
+    }
+
+    useEffect(() => {
+        getRuc();
+    }, [getRuc]);
+
     const tomarFoto = useCallback(async (uuid) => {
         const permiso = await pedirPermisoCamara();
         if (!permiso) {
@@ -44,7 +78,6 @@ const FotosTab = ({ navigation, route }) => {
         launchCamera(options, (response) => {
             if (response.didCancel) {
                 console.log("🚫 Captura de foto cancelada");
-                Alert.alert("Error", "error.");
             } else if (response.errorCode) {
                 console.error("❌ Error al tomar foto:", response.errorMessage);
                 Alert.alert("Error", "No se pudo tomar la foto.");
@@ -131,13 +164,13 @@ const FotosTab = ({ navigation, route }) => {
                             (_, results) => {
                                 console.log('Photos retrieved successfully:', results.rows);
                                 const photosByType = {};
-                                
+
                                 // Create an object mapping type UUIDs to photo paths
                                 for (let i = 0; i < results.rows.length; i++) {
                                     const row = results.rows.item(i);
                                     photosByType[row.uuid_type] = row.path_photo;
                                 }
-                                
+
                                 // Update the photos state with all retrieved photos
                                 setPhotos(photosByType);
                             },

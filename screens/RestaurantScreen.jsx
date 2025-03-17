@@ -9,29 +9,8 @@ import PageTitle from "../components/PageTitle";
 const Tab = createBottomTabNavigator();
 
 const RestaurantScreen = ({ route }) => {
-  const { location, uuid: routeUuid } = route.params;
-  const uuid = routeUuid || location?.uuid || 0; // Get UUID from route params
-
-  const photos = [
-    {
-      type: {
-        uuid: 1,
-        path: 'https://i.blogs.es/6f44dd/google-2015-1/1366_2000.jpg'
-      }
-    },
-    {
-      type: {
-        uuid: 2,
-        path: 'https://i.blogs.es/ce51e2/significado-iconos-logos-google-apps/1366_2000.jpeg'
-      }
-    },
-    {
-      type: {
-        uuid: 3,
-        path: 'https://i.blogs.es/6f44dd/google-2015-1/1366_2000.jpg'
-      }
-    }
-  ]
+  const { location, uuid: routeUuid } = route.params; // Obtener la ubicación y el uuid del restaurante si se envía como parámetro
+  const uuid = routeUuid || location?.uuid || 0; // Obtener el id o uuid del restaurante si se envía como parámetro
 
   return (
     <View style={globalStyles.container}>
@@ -47,13 +26,13 @@ const RestaurantScreen = ({ route }) => {
       >
         <Tab.Screen
           name="Datos"
-          component={DatosTab}
-          initialParams={{ ...location, uuid }}
+          component={DatosTab} // Ir al TAB de Datos
+          initialParams={{ ...location, uuid }} // Pasar la ubicación y el uuid como parámetros
         />
         <Tab.Screen
           name="Fotos"
-          component={FotosTab}
-          initialParams={{ uuid }}
+          component={FotosTab} // Ir al TAB de Fotos
+          initialParams={{ uuid }} // Pasar el uuid como parámetro
         />
       </Tab.Navigator>
     </View>

@@ -5,24 +5,20 @@ import PrimaryButton from '../components/ButtonPrimary'
 import { globalStyles } from '../styles/GlobalStyles';
 import MapOpenLayers from '../components/MapOpenLayers';
 import { useFocusEffect } from '@react-navigation/native';
-import NetInfo from "@react-native-community/netinfo"; 
 
 import { db } from '../database/createdatabase';
 
 const HomeScreen = ({ navigation }) => {
     const [selectedRestaurantId, setSelectedRestaurantId] = useState(null);
-    const API_URL = 'https://c7e42vwpel.execute-api.us-east-1.amazonaws.com/yordialcantara/restaurants';
+    const BASE_URL = 'https://c7e42vwpel.execute-api.us-east-1.amazonaws.com/yordialcantara'
     const API_KEY = 'yvCOAEXOaj2wge5Uh1czv5WaI9rVeEdW1K6w3bh9';
 
-    // Obtener datos desde la apy
+    // Obtener datos desde la apI
     const fetchTypesFromAPI = async () => {
-        const url = 'https://c7e42vwpel.execute-api.us-east-1.amazonaws.com/yordialcantara/photo-types';
-        const apiKey = 'yvCOAEXOaj2wge5Uh1czv5WaI9rVeEdW1K6w3bh9';
-
         try {
-            const response = await fetch(url, {
+            const response = await fetch(BASE_URL + '/photo-types', {
                 method: 'GET',
-                headers: { 'x-api-key': apiKey, }
+                headers: { 'x-api-key': API_KEY, }
             });
 
             if (!response.ok) { throw new Error(`HTTP error! status: ${response.status}`); }
@@ -49,10 +45,13 @@ const HomeScreen = ({ navigation }) => {
         });
     };
 
-    // Función que se ejecuta al presionar el botón
+    // Función PARA DESCARGAR LOS TIPOS DE DATO Y GUARDAR EN LOCAL
     const onButtonPress = async () => {
         try {
+            // Obtener datos de la api
             const types = await fetchTypesFromAPI();
+
+            // Guardar los tipos en la base de datos local
             saveTypesToLocalDB(types);
             Alert.alert('Éxito', 'Los tipos de fotos se han guardado correctamente en la base de datos local.');
         }
@@ -61,30 +60,33 @@ const HomeScreen = ({ navigation }) => {
 
     const handleRestaurantSelect = (restaurant) => {
         console.log("Restaurante seleccionado:", restaurant);
+        // Guardar el uuid del restaurante seleccionado
         setSelectedRestaurantId(restaurant.uuid);
     };
 
-    const [totalRestaurants, setTotalRestaurants] = useState(0);
-    const [pendingRestaurants, setPendingRestaurants] = useState(0);
-    const [restaurantList, setRestaurantList] = useState([]);
+    const [totalRestaurants, setTotalRestaurants] = useState(0); // Total de restaurantes
+    const [pendingRestaurants, setPendingRestaurants] = useState(0); // Restaurantes pendientes de enviar al api
+    const [restaurantList, setRestaurantList] = useState([]); // Lista de restaurantes
 
     const uploadPendingRestaurants = useCallback(async () => {
-        const netInfo = await NetInfo.fetch();
-        if (!netInfo.isConnected) {
-            console.log("📡 No hay conexión a Internet. Esperando conexión...");
+
+        //Comprobar si hay internet
+        if (!navigation.online) {
+            console.log("No hay conexión a Internet. Esperando conexión...");
             return;
         }
-    
+        
+
         return new Promise((resolve, reject) => {
             db.transaction(tx => {
                 tx.executeSql(
-                    "SELECT * FROM Restaurants WHERE send_api = 0;",
+                    "SELECT * FROM Restaurants WHERE send_api = 0;", // Comprobar si hay restaurantes pendientes de enviar al api
                     [],
                     async (_, results) => {
                         let rows = results.rows;
                         let pendingRestaurants = [];
     
-                        // Extract pending restaurants
+                        // Formatear restaurantes para sincronizar
                         for (let i = 0; i < rows.length; i++) {
                             let restaurant = rows.item(i);
                             pendingRestaurants.push({
@@ -96,38 +98,37 @@ const HomeScreen = ({ navigation }) => {
                             });
                         }
     
-                        // Upload each restaurant
+                        // Enviar al api
                         for (const restaurant of pendingRestaurants) {
                             try {
-                                // Attempt to upload the restaurant to the API
-                                const response = await fetch(API_URL, {
+                                // Enviar al api cada restaurante pendiente
+                                const response = await fetch(BASE_URL + '/restaurants', {
                                     method: 'POST',
                                     headers: {
                                         'Content-Type': 'application/json',
                                         'x-api-key': API_KEY
                                     },
-                                    body: JSON.stringify(restaurant)
+                                    body: JSON.stringify(restaurant) // Enviar el restaurante como JSON
                                 });
     
                                 if (!response.ok) {
-                                    continue; // Skip to the next restaurant if the upload fails
+                                    continue; // Si existe errores, seguir al siguiente.
                                 }
     
                                 const responseData = await response.json();
-                                console.log(`✅ Restaurante ${restaurant.name} subido con éxito`);
     
-                                // Update the database to mark the restaurant as uploaded
+                                // Actualizar la base de datos local send_api true y uuid con el uuid del api
                                 await new Promise((resolveUpdate, rejectUpdate) => {
                                     db.transaction(tx => {
                                         tx.executeSql(
                                             "UPDATE Restaurants SET send_api = 1, uuid = ? WHERE name = ?;",
                                             [responseData.data.uuid, restaurant.name],
-                                            () => {
-                                                console.log(`🔄 Actualizado en la DB: ${restaurant.name}`);
+                                            () => {                                          
+                                                // Resolver la promesa para indicar que la actualización de la base de datos fue exitosa
                                                 resolveUpdate();
                                             },
                                             (_, error) => {
-                                                console.error("Error actualizando send_api:", error);
+                                                // Rechazar la promesa en caso de error
                                                 rejectUpdate(error);
                                             }
                                         );
@@ -139,8 +140,10 @@ const HomeScreen = ({ navigation }) => {
                             }
                         }
     
-                        // After all uploads are complete, refresh the data
+                        // Actualizar los datos y enviar al mapa
                         fetchData();
+
+                        // Resolver la promesa para indicar que la subida de restaurantes fue exitosa
                         resolve();
                     },
                     (_, error) => {
@@ -152,13 +155,15 @@ const HomeScreen = ({ navigation }) => {
         });
     }, []);
     
+    // Obtener datos de los restaurantes desde la base de datos local
     const fetchData = useCallback(() => {
+        // Obtener restaurantes pendientes de enviar al api
         db.transaction((tx) => {
             tx.executeSql(
                 `SELECT 
                     COUNT(*) as total, 
                     SUM(CASE WHEN send_api = 0 THEN 1 ELSE 0 END) as pending 
-                 FROM Restaurants;`,
+                FROM Restaurants;`,
                 [],
                 (_, results) => {
                     let total = results.rows.item(0).total;
@@ -171,6 +176,7 @@ const HomeScreen = ({ navigation }) => {
                 (_, error) => console.error("Error al obtener datos agregados", error)
             );
     
+            // Obtener la lista de restaurantes de la base de datos local
             tx.executeSql(
                 "SELECT * FROM Restaurants;",
                 [],
@@ -188,12 +194,14 @@ const HomeScreen = ({ navigation }) => {
         });
     }, []);
 
+    // Sincronizar restaurantes a la api en segundo plano 
     useFocusEffect(
         useCallback(() => {
             uploadPendingRestaurants();
         }, [uploadPendingRestaurants])
     );
 
+    // Cargar los restaurantes al inicial la aplicación
     useEffect(() => {
         fetchData();
     })
