@@ -16,6 +16,9 @@ La aplicación mustra restaurantes en un mapa. al rededor de la ubicación del u
 
 - Se sincronixan los datos a la api en segundo plano
 
+- Mantener precionado una ubicación en el mapa para agregar nuevo restaurante
+- Precionar un restaurante para ver su información
+
 
 ## RESTAURANTES
 - Mustra 2 pestañas en forma de tab bar para los datos del restaurante y para sus fotos
