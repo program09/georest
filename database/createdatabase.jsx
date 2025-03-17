@@ -13,7 +13,7 @@ const db = SQLite.openDatabase(
         console.log('Database opened successfully');
         checkAndCreateTables(); // Verificar y crear tablas si no existen
 
-            // Eliminar restaurantes con send_api igual a 0 false
+            // Eliminar restaurantes con send_api igual a 0
            /* db.transaction(tx => {
                 tx.executeSql(
                     'DELETE FROM Restaurants WHERE send_api = 0',

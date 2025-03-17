@@ -71,7 +71,7 @@ const HomeScreen = ({ navigation }) => {
     const uploadPendingRestaurants = useCallback(async () => {
 
         //Comprobar si hay internet
-        if (!navigation.online) {
+        if (navigation.online) {
             console.log("No hay conexión a Internet. Esperando conexión...");
             return;
         }
