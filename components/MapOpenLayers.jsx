@@ -2,6 +2,7 @@ import React, { useRef, useEffect, useState } from "react";
 import { View, StyleSheet, PermissionsAndroid, Platform, Alert, Linking, Modal, Text, TouchableOpacity } from "react-native";
 import WebView from "react-native-webview";
 import Geolocation from "@react-native-community/geolocation";
+
 const requestLocationPermission = async () => {
   if (Platform.OS === "android") {
     try {
@@ -36,12 +37,15 @@ const requestLocationPermission = async () => {
   }
   return true;
 };
+
 const MapOpenLayers = ({ restaurants, navigation }) => {
   const webViewRef = useRef(null);
   const [userLocation, setUserLocation] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState(null);
   const [selectedRestaurant, setSelectedRestaurant] = useState(null);
+  const [initialLocationSet, setInitialLocationSet] = useState(false);
+
   useEffect(() => {
     const fetchLocation = async () => {
       const hasPermission = await requestLocationPermission();
@@ -50,7 +54,12 @@ const MapOpenLayers = ({ restaurants, navigation }) => {
         (position) => {
           const { latitude, longitude } = position.coords;
           setUserLocation({ latitude, longitude });
-          sendLocationToWebView(latitude, longitude);
+          if (!initialLocationSet) {
+            sendLocationToWebView(latitude, longitude, true);
+            setInitialLocationSet(true);
+          } else {
+            sendLocationToWebView(latitude, longitude, false);
+          }
         },
         (error) => {
           console.error("❌ Error obteniendo ubicación:", error);
@@ -62,7 +71,7 @@ const MapOpenLayers = ({ restaurants, navigation }) => {
         (position) => {
           const { latitude, longitude } = position.coords;
           setUserLocation({ latitude, longitude });
-          sendLocationToWebView(latitude, longitude);
+          sendLocationToWebView(latitude, longitude, false);
         },
         (error) => console.error("❌ Error siguiendo ubicación:", error),
         { enableHighAccuracy: true, distanceFilter: 10 }
@@ -71,21 +80,34 @@ const MapOpenLayers = ({ restaurants, navigation }) => {
     };
     fetchLocation();
   }, []);
+
+  useEffect(() => {
+    if (webViewRef.current && userLocation) {
+      webViewRef.current.injectJavaScript(`
+        updateRestaurants(${JSON.stringify(restaurants)});
+        updateUserLocation(${userLocation.latitude}, ${userLocation.longitude}, false);
+      `);
+    }
+  }, [restaurants]);
+
   const handleNavigateToRestaurant = () => {
     setModalVisible(false);
     if (selectedRestaurant) {
       navigation.navigate('Restaurant', { uuid: selectedRestaurant.uuid });
+      return
     } else {
       navigation.navigate('Restaurant', { location: selectedLocation });
     }
   };
-  const sendLocationToWebView = (latitude, longitude) => {
+
+  const sendLocationToWebView = (latitude, longitude, center = false) => {
     if (webViewRef.current) {
       webViewRef.current.injectJavaScript(`
-        updateUserLocation(${latitude}, ${longitude});
+        updateUserLocation(${latitude}, ${longitude}, ${center});
       `);
     }
   };
+
   const handleWebViewMessage = (event) => {
     try {
       const data = JSON.parse(event.nativeEvent.data);
@@ -102,6 +124,7 @@ const MapOpenLayers = ({ restaurants, navigation }) => {
       console.error("❌ Error procesando mensaje de WebView:", error);
     }
   };
+
   const mapHtml = `
     <!DOCTYPE html>
     <html lang="es">
@@ -121,6 +144,8 @@ const MapOpenLayers = ({ restaurants, navigation }) => {
       <script>
         let map, userVectorSource, userVectorLayer, selectedLocationSource, selectedLocationLayer, restaurantsSource, restaurantsLayer;
         let longPressTimer;
+        let lastUserLocation;
+        let isFirstUpdate = true;
 
         function initMap() {
           userVectorSource = new ol.source.Vector();
@@ -129,11 +154,19 @@ const MapOpenLayers = ({ restaurants, navigation }) => {
 
           userVectorLayer = new ol.layer.Vector({
             source: userVectorSource,
+            zIndex: 1000,
             style: new ol.style.Style({
               image: new ol.style.Circle({
-                radius: 10,
-                fill: new ol.style.Fill({ color: 'blue' }),
-                stroke: new ol.style.Stroke({ color: '#ffffff', width: 2 })
+                radius: 12,
+                fill: new ol.style.Fill({ color: 'rgba(0, 0, 255, 0.7)' }),
+                stroke: new ol.style.Stroke({ 
+                  color: '#ffffff',
+                  width: 1
+                })
+              }),
+              stroke: new ol.style.Stroke({
+                color: 'rgba(0, 0, 255, 0.3)',
+                width: 10
               })
             })
           });
@@ -153,7 +186,7 @@ const MapOpenLayers = ({ restaurants, navigation }) => {
             source: restaurantsSource,
             style: function(feature) {
               const restaurant = feature.get('restaurant');
-              const color = restaurant.send_api ? '#ff0000' : '#000000'; // Rojo si send_api es true, negro si es false
+              const color = restaurant.send_api ? '#ff0000' : '#000000';
               return new ol.style.Style({
                 image: new ol.style.Circle({
                   radius: 10,
@@ -178,18 +211,7 @@ const MapOpenLayers = ({ restaurants, navigation }) => {
             })
           });
 
-          // Add restaurant markers (solo si la lista no está vacía)
-          const restaurants = ${JSON.stringify(restaurants)};
-          if (restaurants && restaurants.length > 0) {
-            restaurants.forEach(restaurant => {
-              const coords = ol.proj.fromLonLat([restaurant.longitude, restaurant.latitude]);
-              const point = new ol.Feature({
-                geometry: new ol.geom.Point(coords),
-                restaurant: restaurant
-              });
-              restaurantsSource.addFeature(point);
-            });
-          }
+          updateRestaurants(${JSON.stringify(restaurants)});
 
           let startTime;
           
@@ -237,16 +259,38 @@ const MapOpenLayers = ({ restaurants, navigation }) => {
           });
         }
 
-        function updateUserLocation(latitude, longitude) {
+        function updateRestaurants(restaurants) {
+          restaurantsSource.clear();
+          if (restaurants && restaurants.length > 0) {
+            restaurants.forEach(restaurant => {
+              const coords = ol.proj.fromLonLat([restaurant.longitude, restaurant.latitude]);
+              const point = new ol.Feature({
+                geometry: new ol.geom.Point(coords),
+                restaurant: restaurant
+              });
+              restaurantsSource.addFeature(point);
+            });
+          }
+          if (lastUserLocation) {
+            updateUserLocation(lastUserLocation.latitude, lastUserLocation.longitude, false);
+          }
+        }
+
+        function updateUserLocation(latitude, longitude, center = false) {
           const coords = ol.proj.fromLonLat([longitude, latitude]);
+          lastUserLocation = { latitude, longitude };
           
           userVectorSource.clear();
           const point = new ol.Feature({
             geometry: new ol.geom.Point(coords)
           });
           userVectorSource.addFeature(point);
-          map.getView().setCenter(coords);
-          map.getView().setZoom(16);
+          
+          if (isFirstUpdate || center) {
+            map.getView().setCenter(coords);
+            map.getView().setZoom(16);
+            isFirstUpdate = false;
+          }
         }
 
         document.addEventListener("DOMContentLoaded", initMap);

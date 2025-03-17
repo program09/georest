@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text } from "react-native";
+import { View, Text, Alert } from "react-native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import DatosTab from './restaurant/DatosTab'
 import FotosTab from './restaurant/FotosTab'
@@ -53,7 +53,7 @@ const RestaurantScreen = ({ route }) => {
         <Tab.Screen
           name="Fotos"
           component={FotosTab}
-          initialParams={{ uuid, photos }}
+          initialParams={{ uuid}}
         />
       </Tab.Navigator>
     </View>

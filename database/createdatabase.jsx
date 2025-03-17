@@ -11,6 +11,17 @@ const db = SQLite.openDatabase(
     () => {
         console.log('Database opened successfully');
         checkAndCreateTables(); // Verificar y crear tablas si no existen
+
+            // Clean restaurants table
+           /* db.transaction(tx => {
+                tx.executeSql(
+                    'DELETE FROM Restaurants WHERE send_api = 0',
+                    [],
+                    () => console.log('Restaurants table cleaned successfully'),
+                    error => console.error('Error cleaning Restaurants table:', error)
+                );
+            });
+            */
     },
     error => {
         Alert.alert(
@@ -34,10 +45,10 @@ const checkAndCreateTables = () => {
                     // Crear tabla Types si no existe
                     tx.executeSql(
                         `CREATE TABLE IF NOT EXISTS Types (
-              uuid TEXT PRIMARY KEY,
-              name TEXT NOT NULL,
-              description TEXT
-            )`,
+                            uuid TEXT PRIMARY KEY,
+                            name TEXT NOT NULL,
+                            description TEXT
+                        )`,
                         [],
                         () => console.log('Types table created or already exists'),
                         error => console.error('Failed to create Types table', error)

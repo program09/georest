@@ -1,11 +1,11 @@
 import React, { useState, useCallback } from "react";
-import { View, Text, TextInput, Image, StyleSheet, TouchableOpacity, ScrollView } from "react-native";
+import { View, Text, TextInput, Image, StyleSheet, TouchableOpacity, ScrollView, Alert } from "react-native";
 import PhotoItem from "../../components/PhotoItem";
 import { globalStyles } from "../../styles/GlobalStyles"
 import PrimaryButton from "../../components/ButtonPrimary";
 import ButtonDanger from "../../components/ButtonDanger";
 
-const FotosTab = ({ navigation }) => {
+const FotosTab = ({ navigation}) => {
     const [photos, setPhotos] = useState({});
 
     const tomarFoto = useCallback((uuid) => {
@@ -14,6 +14,9 @@ const FotosTab = ({ navigation }) => {
             [uuid]: "https://i.blogs.es/ce51e2/significado-iconos-logos-google-apps/1366_2000.jpeg"
         }));
     }, []);
+
+    
+
 
     const typephotos = [
         {

@@ -18,8 +18,57 @@ const DatosTab = ({ route, navigation }) => {
             const { latitude, longitude } = route.params;
             setLatitud(latitude ? latitude.toString() : "");
             setLongitud(longitude ? longitude.toString() : "");
+            if (route.params.uuid) {
+                const uuid = route.params.uuid;
+                // If UUID is numeric (short format)
+                if (!isNaN(uuid) && uuid.length < 10) {
+                    // Fetch restaurant data from local database
+                    db.transaction(tx => {
+                        tx.executeSql(
+                            'SELECT * FROM Restaurants WHERE id = ?',
+                            [uuid],
+                            (_, { rows }) => {
+                                if (rows.length > 0) {
+                                    const restaurant = rows.item(0);
+                                    setNombre(restaurant.name || '');
+                                    setRuc(restaurant.ruc || '');
+                                    setComentario(restaurant.comment || '');
+                                    setLatitud(restaurant.latitude ? restaurant.latitude.toString() : '');
+                                    setLongitud(restaurant.longitude ? restaurant.longitude.toString() : '');
+                                }
+                            },
+                            (_, error) => {
+                                console.error("Error fetching local restaurant data:", error);
+                            }
+                        );
+                    });
+
+                } else {
+                    // Fetch restaurant data from API
+                    fetch(`https://c7e42vwpel.execute-api.us-east-1.amazonaws.com/yordialcantara/restaurants/${uuid}`, {
+                        headers: {
+                            'x-api-key': 'yvCOAEXOaj2wge5Uh1czv5WaI9rVeEdW1K6w3bh9'
+                        }
+                    })
+                        .then(response => response.json())
+                        .then(response => {
+                            if (response.data) {
+                                setNombre(response.data.name || '');
+                                setRuc(response.data.ruc || '');
+                                setComentario(response.data.comment || '');
+                                setLatitud(response.data.latitude || '');
+                                setLongitud(response.data.longitude || '');
+                            }
+                        })
+                        .catch(error => {
+                            console.error("Error fetching restaurant data:", error);
+                        });
+                }
+            }
         }
     }, [route.params]);
+
+
 
     const handleSave = () => {
         // Validar campos obligatorios
@@ -27,7 +76,7 @@ const DatosTab = ({ route, navigation }) => {
             Alert.alert("Error", "Por favor, completa todos los campos obligatorios.");
             return;
         }
-    
+
         // Insertar en la base de datos
         db.transaction(tx => {
             tx.executeSql(
@@ -38,7 +87,7 @@ const DatosTab = ({ route, navigation }) => {
                     if (result.rowsAffected > 0) {
                         const insertId = result.insertId;
                         console.log("Restaurante guardado correctamente. ID:", insertId);
-                        
+
                         // Update the UUID with the insertId
                         tx.executeSql(
                             'UPDATE Restaurants SET uuid = ? WHERE id = ?',
@@ -47,7 +96,6 @@ const DatosTab = ({ route, navigation }) => {
                                 if (updateResult.rowsAffected > 0) {
                                     console.log("UUID updated successfully");
                                     Alert.alert("Success", "Restaurant saved successfully.");
-                                    navigation.goBack();
                                 } else {
                                     console.error("Failed to update UUID");
                                     Alert.alert("Error", "Failed to update restaurant UUID.");
