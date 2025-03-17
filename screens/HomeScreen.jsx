@@ -76,7 +76,6 @@ const HomeScreen = ({ navigation }) => {
             return;
         }
         
-
         return new Promise((resolve, reject) => {
             db.transaction(tx => {
                 tx.executeSql(

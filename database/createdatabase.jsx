@@ -2,12 +2,12 @@ import { Alert } from 'react-native';
 import SQLite from 'react-native-sqlite-storage';
 
 
+
 // Abrir o crear la base de datos
 const db = SQLite.openDatabase(
     { 
         name: 'georest.db', 
         location: 'default',
-        createFromLocation: 1  // This ensures the database persists between app launches
     },
     () => {
         console.log('Database opened successfully');

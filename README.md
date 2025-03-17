@@ -5,6 +5,7 @@
 
 La aplicación mustra restaurantes en un mapa. al rededor de la ubicación del usaurio
 - La aplicación necesita permissos de ubicación, internet, leer y escribir en el almacenamiento.
+- Debe conectarse a internet la primera vez al instalar la aplicación para descargar los mapas.
 
 ## HOME
 - El la página principal se mustra el total de resturantes agregados, y la cantidad de restaurantes que nos e han sincronizado con la api
